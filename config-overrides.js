@@ -8,7 +8,7 @@ const {
 
 const { resolve } = require("path");
 
-function resolvePath(path) {
+function resolvePath (path) {
   return resolve(__dirname, "src", path);
 }
 
@@ -23,7 +23,7 @@ module.exports = override(
   addLessLoader({
     javascriptEnabled: true,
     modifyVars: {
-      "@primary-color": "#1DA57A",
+      "@primary-color": "green",
     },
   }),
   // 添加装饰器语法
@@ -38,5 +38,6 @@ module.exports = override(
     "@pages": resolvePath("pages"),
     "@redux": resolvePath("redux"),
     "@conf": resolvePath("config"),
+    // "proxy": "http://47.103.203.152/reset"
   })
 );
