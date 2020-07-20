@@ -1,79 +1,124 @@
-import React, { useState } from "react";
-import { Form, Input, Select, Cascader, Button } from "antd";
-
+import React, { useState, useEffect } from "react";
+import { Form, Input, Select, Cascader, Button, message } from "antd";
+import { reqGetAllTeacherList } from '@api/edu/teacher'
+import { reqALLSubjectList, reqGetSecSubject } from '@api/edu/subject'
+import { connect } from 'react-redux'
+import { getCourseList } from '../redux'
+import { FormattedMessage, useIntl } from 'react-intl'
 import "./index.less";
 
 const { Option } = Select;
 
-function SearchForm() {
+function SearchForm (props) {
+  const intl = useIntl()
   const [form] = Form.useForm();
+  const [teacherList, setTeacherList] = useState([])
+  const [subjectList, setSubjectList] = useState([])
+  useEffect(() => {
+    async function fetchData () {
+      const [teacherList, subjectList] = await Promise.all([
+        reqGetAllTeacherList(),
+        reqALLSubjectList()
+      ])
+      const options = subjectList.map(subject => {
+        return {
+          value: subject._id,
+          label: subject.title,
+          isLeaf: false // false表示有子数据, true表示没有子数据
+        }
+      })
 
-  const [options, setOptions] = useState([
-    {
-      value: "zhejiang",
-      label: "Zhejiang",
-      isLeaf: false
-    },
-    {
-      value: "jiangsu",
-      label: "Jiangsu",
-      isLeaf: false
+      // console.log(res)
+      setTeacherList(teacherList)
+      setSubjectList(options)
     }
-  ]);
+    fetchData()
+  }, [])
+
+
 
   const onChange = (value, selectedOptions) => {
-    console.log(value, selectedOptions);
+    // console.log(value, selectedOptions);
   };
 
-  const loadData = selectedOptions => {
+  const loadData = async selectedOptions => {
     const targetOption = selectedOptions[selectedOptions.length - 1];
     targetOption.loading = true;
+    let secSubject = await reqGetSecSubject(targetOption.value)
+    secSubject = secSubject.items.map(item => {
+      return {
+        value: item._id,
+        label: item.title
+      }
+    })
+    targetOption.loading = false
+    if (secSubject.length > 0) {
+      targetOption.children = secSubject
+    } else {
+      targetOption.isLeaf = true
+    }
 
-    // load options lazily
-    setTimeout(() => {
-      targetOption.loading = false;
-      targetOption.children = [
-        {
-          label: `${targetOption.label} Dynamic 1`,
-          value: "dynamic1"
-        },
-        {
-          label: `${targetOption.label} Dynamic 2`,
-          value: "dynamic2"
-        }
-      ];
-      setOptions([...options]);
-    }, 1000);
+    setSubjectList([...subjectList])
   };
 
   const resetForm = () => {
     form.resetFields();
   };
-
+  const finish = async value => {
+    // console.log(value)
+    let subjectId
+    let subjectParentId
+    if (value.subject && value.subject.length > 1) {
+      subjectId = value.subject[1]
+      subjectParentId = value.subject[0]
+    }
+    if (value.subject && value.subject.length === 1) {
+      subjectId = value.subject[0]
+      subjectParentId = 0
+    }
+    const data = {
+      page: 1,
+      limit: 5,
+      title: value.title,
+      teacherId: value.teacherId,
+      subjectId,
+      subjectParentId
+    }
+    const res = await props.getCourseList(data)
+    // console.log(res)
+    message.success('课程数据获取成功')
+  }
   return (
-    <Form layout="inline" form={form}>
-      <Form.Item name="title" label="标题">
-        <Input placeholder="课程标题" style={{ width: 250, marginRight: 20 }} />
+    <Form layout="inline" form={form} onFinish={finish}>
+      <Form.Item name="title" label={<FormattedMessage id='title' />}>
+        <Input placeholder={intl.formatMessage({
+          id: 'title'
+        })} style={{ width: 250, marginRight: 20 }} />
       </Form.Item>
-      <Form.Item name="teacherId" label="讲师">
+      <Form.Item name="teacherId" label={<FormattedMessage id='teacher' />}>
         <Select
           allowClear
-          placeholder="课程讲师"
+          placeholder={intl.formatMessage({
+            id: 'teacher'
+          })}
           style={{ width: 250, marginRight: 20 }}
         >
-          <Option value="lucy1">Lucy1</Option>
-          <Option value="lucy2">Lucy2</Option>
-          <Option value="lucy3">Lucy3</Option>
+          {teacherList.map(teacher => {
+            return (<Option key={teacher._id} value={teacher._id}>{teacher.name}</Option>)
+          })}
+
         </Select>
       </Form.Item>
-      <Form.Item name="subject" label="分类">
+      <Form.Item name="subject" label={<FormattedMessage id='subject' />}>
         <Cascader
           style={{ width: 250, marginRight: 20 }}
-          options={options}
+          options={subjectList}
           loadData={loadData}
           onChange={onChange}
           changeOnSelect
-          placeholder="课程分类"
+          placeholder={intl.formatMessage({
+            id: 'subject'
+          })}
         />
       </Form.Item>
       <Form.Item>
@@ -90,4 +135,4 @@ function SearchForm() {
   );
 }
 
-export default SearchForm;
+export default connect(null, { getCourseList })(SearchForm);

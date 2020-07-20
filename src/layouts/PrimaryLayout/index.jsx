@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Layout, Menu, Dropdown, Breadcrumb } from "antd";
+import { Layout, Menu, Dropdown, Breadcrumb, Button } from "antd";
 import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
@@ -10,7 +10,7 @@ import {
 } from "@ant-design/icons";
 import { connect } from "react-redux";
 import { Link, withRouter } from "react-router-dom";
-
+import PubSub from 'pubsub-js'
 import SiderMenu from "../SiderMenu";
 import { AuthorizedRouter } from "@comps/Authorized";
 import { logout } from "@redux/actions/login";
@@ -37,6 +37,7 @@ const { Header, Sider, Content } = Layout;
 class PrimaryLayout extends Component {
   state = {
     collapsed: false,
+    currentLanguage: window.navigator.language === 'zh-CN' ? 'zh' : 'en'
   };
 
   toggle = () => {
@@ -76,6 +77,15 @@ class PrimaryLayout extends Component {
     </Menu>
   );
 
+  handleChangeLanguage = language => () => {
+    PubSub.publish('LANGUAGE', language)
+    this.setState({
+      currentLanguage: language
+    })
+  }
+  componentWillMount () {
+    this.setState = () => false
+  }
   selectRoute = (routes = [], pathname) => {
     for (let i = 0; i < routes.length; i++) {
       const route = routes[i];
@@ -131,14 +141,29 @@ class PrimaryLayout extends Component {
     );
   };
 
-  render() {
+  render () {
     const { collapsed } = this.state;
     const {
       routes,
       user,
       location: { pathname },
     } = this.props;
-
+    const initMenu = (
+      <Menu>
+        <Menu.Item>
+          <Button
+            type={this.state.currentLanguage === 'zh' ? 'link' : 'text'}
+            onClick={this.handleChangeLanguage('zh')}
+          >中文</Button>
+        </Menu.Item>
+        <Menu.Item>
+          <Button
+            type={this.state.currentLanguage === 'en' ? 'link' : 'text'}
+            onClick={this.handleChangeLanguage('en')}
+          >Engilsh</Button>
+        </Menu.Item>
+      </Menu>
+    );
     const route = this.selectRoute(routes, pathname);
 
     return (
@@ -170,7 +195,9 @@ class PrimaryLayout extends Component {
                   </span>
                 </Dropdown>
                 <span className="site-layout-lang">
-                  <GlobalOutlined />
+                  <Dropdown overlay={initMenu} placement="bottomLeft">
+                    <GlobalOutlined />
+                  </Dropdown>
                 </span>
               </span>
             </span>
